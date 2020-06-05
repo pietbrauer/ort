@@ -21,6 +21,7 @@
 
 package org.ossreviewtoolkit.spdx
 
+import org.ossreviewtoolkit.spdx.model.SpdxConstants
 import java.io.File
 import java.net.URL
 import java.security.MessageDigest
@@ -157,6 +158,24 @@ fun getLicenseTextReader(
         SpdxLicense.forId(id)?.let { { it.text } }
             ?: SpdxLicenseException.forId(id)?.takeIf { handleExceptions }?.let { { it.text } }
     }
+
+/**
+ * Return true if and only if this String can be successfully parsed to a [SpdxExpression].
+ */
+internal fun String.isSpdxExpression(): Boolean =
+    try {
+        SpdxExpression.parse(this)
+        true
+    } catch (e: SpdxException) {
+        false
+    }
+
+/**
+ * Return true if and only if this String can be successfully parsed to a [SpdxExpression] or if it equals
+ * [org.ossreviewtoolkit.spdx.model.SpdxConstants.NONE] or [org.ossreviewtoolkit.spdx.model.SpdxConstants.NOASSERTION].
+ */
+internal fun String.isSpdxExpressionOrNotPresent(): Boolean =
+    SpdxConstants.isNotPresent(this) || isSpdxExpression()
 
 private fun getLicenseTextResource(id: String): URL? =
     object {}.javaClass.getResource("/licenserefs/$id")

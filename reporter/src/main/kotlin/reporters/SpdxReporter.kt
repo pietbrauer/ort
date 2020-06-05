@@ -25,7 +25,6 @@ import org.ossreviewtoolkit.model.utils.collectLicenseFindings
 import org.ossreviewtoolkit.reporter.Reporter
 import org.ossreviewtoolkit.reporter.ReporterInput
 import org.ossreviewtoolkit.spdx.model.SpdxDocument
-import org.ossreviewtoolkit.spdx.model.SpdxDocumentDescribes
 import org.ossreviewtoolkit.spdx.model.SpdxFile
 import org.ossreviewtoolkit.spdx.model.SpdxPackage
 import org.ossreviewtoolkit.utils.toHexString
@@ -111,7 +110,7 @@ abstract class SpdxReporter(val mapper: ObjectMapper) : Reporter {
             id = "id",
             name = "name",
             licenseListVersion = "licenseListVersion",
-            creatorComment = "creatorComment",
+            comment = "creatorComment",
             documentDescribes = documentDescribes
         )
 

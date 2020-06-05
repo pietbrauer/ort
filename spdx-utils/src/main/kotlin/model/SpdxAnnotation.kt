@@ -19,60 +19,55 @@
 
 package org.ossreviewtoolkit.spdx.model
 
-import com.fasterxml.jackson.annotation.JsonFormat
-import com.fasterxml.jackson.annotation.JsonProperty
-
-import java.util.Date
+import java.time.Instant
 
 /**
- * Annotation on a [SpdxDocument], [SpdxFile], or [SpdxPackage].
+ * An annotation which can relate to [SpdxDocument]s, [SpdxFile]s, or [SpdxPackage]s, see also
+ * https://github.com/spdx/spdx-spec/blob/master/chapters/8-annotations.md.
  */
 data class SpdxAnnotation(
     /**
-     * This field identifies the person, organization or tool that has commented on a file, package, or entire document.
-     * Cardinality: Mandatory, one.
+     * The creation date of this [Annotation].
+     */
+    val annotationDate: Instant,
+
+    /**
+     * The type of this [Annotation].
+     */
+    val annotationType: Type,
+
+    /**
+     * The person, organization or tool that has created this [Annotation]. The value must be a single line text in one
+     * of the following formats:
+     *
+     * 1. "Person: person name" or "Person: person name (email)"
+     * 2. "Organization: organization name" or "Organization: organization name (email)"
+     * 3. "Tool: tool identifier - version"
+     *
+     * TODO: Introduce a data type for above subjects.
      */
     val annotator: String,
 
     /**
-     * Identify when the comment was made.
-     * This is to be specified according to the combined date and time in the UTC format,
-     * as specified in the ISO 8601 standard.
-     * Cardinality: Mandatory, one.
+     * Comments from the [annotator].
      */
-    @get:JsonProperty("annotationDate")
-    @get:JsonFormat(
-        shape = JsonFormat.Shape.STRING,
-        pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-    )
-    val date: Date,
-
-    /**
-     * Type of the annotation.
-     * Cardinality: Mandatory, one.
-     */
-    @get:JsonProperty("annotationType")
-    val type: SpdxAnnotationType,
-
-    /**
-     * Comments from Annotator.
-     * Cardinality: Mandatory, one.
-     */
-    @get:JsonProperty("annotationComment")
     val comment: String
+) {
+    enum class Type {
+        /**
+         * Type of annotation which does not fit in any of the pre-defined annotation types.
+         */
+        OTHER,
 
-    ) : Comparable<SpdxAnnotation> {
+        /**
+         * A Review represents an audit and signoff by an individual, organization
+         * or tool on the information for an SpdxElement.
+         */
+        REVIEW;
+    }
 
-    /**
-     * A comparison function to sort [SpdxAnnotation]s.
-     */
-    override fun compareTo(other: SpdxAnnotation) =
-        compareValuesBy(
-            this,
-            other,
-            compareBy(SpdxAnnotation::date)
-                .thenBy(SpdxAnnotation::type)
-                .thenBy(SpdxAnnotation::annotator)
-                .thenBy(SpdxAnnotation::comment)
-        ) { it }
+    init {
+        require(annotator.isNotBlank()) { "The annotator must not be blank." }
+    }
 }
+

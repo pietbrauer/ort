@@ -19,69 +19,175 @@
 
 package org.ossreviewtoolkit.spdx.model
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.ossreviewtoolkit.spdx.isSpdxExpression
+import org.ossreviewtoolkit.spdx.isSpdxExpressionOrNotPresent
 
 /**
- * Describes a software file
+ * Provides important meta-data about a particular file of a software package, see also
+ * https://github.com/spdx/spdx-spec/blob/master/chapters/4-file-information.md.
  */
+@JsonIgnoreProperties("ranges") // TODO: Implement ranges which is broken in the specification examples.
 data class SpdxFile(
     /**
-     * Name as given by package originator.
-     * Cardinality: Mandatory, one.
-     */
-    val name: String,
-
-    /**
-     * Identifier for the package.
-     * Cardinality: Mandatory, one.
+     * A uniquely identifies this [SpdxFile] within a SPDX document.
      */
     @JsonProperty("SPDXID")
-    val id: String,
-
-//    /**
-//     */
-//    @JsonProperty("fileTypes")
-//    val type: String? = null,
-//
-//    /**
-//     */
-//    @JsonProperty("fileChecksum")
-//    val checksum: String? = null,
-//
-//    /**
-//     */
-//    @JsonProperty("fileComment")
-//    val comment: String? = null,
-//
-//    /**
-//     */
-//    @JsonProperty("fileContributors")
-//    val fileContributors: String? = null,
-
-//    /**
-//     */
-//    val licenseConcluded: String? = null,
-
-    val licenseInfoFromFiles: List<String>,
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    val licenseComments: String? = null
-) : Comparable<SpdxFile> {
-    companion object {
-        /**
-         * A constant for a [SpdxPackage] where all properties are empty.
-         */
-        @JvmField
-        val EMPTY = SpdxFile(
-            name = "",
-            id = "",
-            licenseInfoFromFiles = emptyList()
-        )
-    }
+    val spdxId: String,
 
     /**
-     * A comparison function to sort files by their SPDX id.
+     * The [SpdxAnnotation]s for the file.
      */
-    override fun compareTo(other: SpdxFile) = id.compareTo(other.id)
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val annotations: List<SpdxAnnotation> = emptyList(),
+
+    /**
+     * Checksums of the file, must contain one entry using [SpdxChecksum.Algorithm.SHA1].
+     */
+    val checksums: List<SpdxChecksum> = emptyList(),
+
+    /**
+     * A general comments about the file.
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val comment: String = "",
+
+    /**
+     * A text relating to a copyright notice, even if not complete. To represent a not present value
+     * [SpdxConstants.NONE] or [SpdxConstants.NOASSERTION] must be used.
+     */
+    val copyrightText: String,
+
+    /**
+     * The list of contributors which contributed to the file. Contributors could include names of copyright holders
+     * and/or authors who may not be copyright holders, yet contributed to the file content.
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val fileContributors: List<String>,
+
+    /**
+     * This field is deprecated since SPDX 2.0 in favor of [SpdxDocument.relationships].
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val fileDependencies: List<String> = emptyList(),
+
+    /**
+     * The name of the file.
+     */
+    @JsonProperty("fileName")
+    val filename: String,
+
+    /**
+     * The types of the file.
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val fileTypes: List<Type> = emptyList(),
+
+    /**
+     * Any relevant background references or analysis that went in to arriving at the Concluded License for the file.
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val licenseComments: String = "",
+
+    /**
+     * The concluded license for the file as SPDX expression. To represent a not present value [SpdxConstants.NONE] or
+     * [SpdxConstants.NOASSERTION] must be used.
+     */
+    val licenseConcluded: String,
+
+    /**
+     * The license information found in this file. To represent a not present value [SpdxConstants.NONE] or
+     * [SpdxConstants.NOASSERTION] must be used.
+     */
+    val licenseInfoInFiles: List<String>,
+
+    /**
+     * License notices or other such related notices found in the file. This may include copyright statements.
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val noticeText: String = ""
+) {
+    enum class Type {
+        /**
+         * The file is associated with a specific application type (MIME type of application e.g. .exe).
+         */
+        APPLICATION,
+
+        /**
+         * Indicates the file is an archive file.
+         */
+        ARCHIVE,
+
+        /**
+         * The file is associated with an audio file (MIME type of audio, e.g. .mp3).
+         */
+        AUDIO,
+
+        /**
+         * Indicates the file is not a text file.
+         */
+        BINARY,
+
+        /**
+         * The file serves as documentation.
+         */
+        DOCUMENTATION,
+
+        /**
+         * The file is associated with an picture image file (MIME type of image, e.g. .jpg, .gif).
+         */
+        IMAGE,
+
+        /**copyrightText
+         * Indicates the file is not a source, archive or binary file.
+         */
+        OTHER,
+
+        /**
+         * Indicates the file is a source code file.
+         */
+        SOURCE,
+
+        /**
+         * The file is an SPDX document.
+         */
+        SPDX,
+
+        /**
+         * The file is a human readable text file (MIME type of text).
+         */
+        TEXT,
+
+        /**
+         * The file is associated with a video file (MIME type of video, e.g. .avi, .mkv, .mp4)
+         */
+        VIDEO;
+    }
+
+    init {
+        require(checksums.filter { it.algorithm == SpdxChecksum.Algorithm.SHA1 }.isNotEmpty()) {
+            "At least one SHA1 checksum must be provided."
+        }
+
+        require(copyrightText.isNotBlank()) {
+            "The copyrightText must not be blank."
+        }
+
+        require(filename.isNotBlank()) { "The filename must not be blank." }
+
+        require(licenseConcluded.isSpdxExpressionOrNotPresent()) {
+            "The licenseConcluded must be either an SpdxExpression, 'NONE' or 'NOASSERTION', but was $licenseConcluded."
+        }
+
+        // TODO: The check for [licenseInfoInFiles] can be made more strict, but the SPDX specification is not exact
+        // enough yet to do this safely.
+        licenseInfoInFiles.filterNot { it.isSpdxExpressionOrNotPresent() }.let  {
+            require(it.isEmpty()) {
+                "The entries in licenseInfoInFiles must each be either an SpdxExpression, 'NONE' or 'NOASSERTION', " +
+                    "but found ${it.joinToString()}."
+            }
+        }
+    }
 }

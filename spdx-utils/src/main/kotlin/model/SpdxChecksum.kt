@@ -19,33 +19,40 @@
 
 package org.ossreviewtoolkit.spdx.model
 
-import com.fasterxml.jackson.annotation.JsonRootName
-
 /**
- * Checksum to be able to verify provided [SpdxDocument], [SpdxPackage] or [SpdxFile] against actual files.
+ * Specifies checksum value and algorithm.
  */
-@JsonRootName(value = "Checksum")
 data class SpdxChecksum(
     /**
-     * Type of the [SpdxAnnotation]
-     * Cardinality: Mandatory, one.
+     * The checksum algorithm.
      */
-    val algorithm: SpdxChecksumAlgorithm,
+    val algorithm: Algorithm,
 
     /**
-     * Value of the [SpdxChecksum].
-     * Cardinality: Mandatory, one.
+     * The lower case hexadecimal checksum value.
      */
-    val value: String
-) : Comparable<SpdxChecksum> {
-    /**
-     * A comparison function to sort [SpdxChecksum]s.
-     */
-    override fun compareTo(other: SpdxChecksum) =
-        compareValuesBy(
-            this,
-            other,
-            compareBy(SpdxChecksum::value)
-                .thenBy(SpdxChecksum::algorithm)
-        ) { it }
+    val checksumValue: String
+) {
+    enum class Algorithm(val checksumHexDigits: Int) {
+        MD2(32),
+        MD4(32),
+        MD5(32),
+        MD6(-1),
+        SHA1(40),
+        SHA224(56),
+        SHA256(64),
+        SHA384(96),
+        SHA512(128);
+    }
+
+    init {
+        require(checksumValue.matches("^[0-9a-f]+$".toRegex())) {
+            "The checksum value must only contain lower case hexadecimal digits."
+        }
+
+        require(algorithm.checksumHexDigits == -1 || checksumValue.length == algorithm.checksumHexDigits) {
+            "Expected a checksum value with ${algorithm.checksumHexDigits} hexadecimal digits, but found " +
+                    "${checksumValue.length}."
+        }
+    }
 }

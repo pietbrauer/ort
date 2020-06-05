@@ -19,67 +19,32 @@
 
 package org.ossreviewtoolkit.spdx.model
 
-import com.fasterxml.jackson.annotation.JsonRootName
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import com.fasterxml.jackson.databind.ser.std.StdSerializer
+import com.fasterxml.jackson.annotation.JsonInclude
 
 /**
- * Identifier based on fingerprinting actual files within [SpdxPackage].
+ * A unique identifier based on the file contents of a package.
  */
-@JsonRootName(value = "PackageVerificationCode")
-@JsonSerialize(using = SpdxPackageVerificationCodeSerializer::class)
 data class SpdxPackageVerificationCode(
     /**
-     * Value for [SpdxPackageVerificationCode].
-     * Cardinality: mandatory, one.
+     * The list of file excluded from the package verification code calculation.
      */
-    val packageVerificationCodeValue: String,
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val packageVerificationCodeExcludedFiles: List<String> = emptyList(),
 
     /**
-     * Whether a file .
-     * Cardinality: optional, one.
+     * The package verification code value in lower case hexadecimal representation.
      */
-    val packageVerificationCodeExcludedFile: String? = ""
-) : Comparable<SpdxPackageVerificationCode> {
-    companion object {
-        /**
-         * A constant for a [SpdxPackageVerificationCode] where all properties are empty.
-         */
-        @JvmField
-        val EMPTY = SpdxPackageVerificationCode(
-            packageVerificationCodeValue = "",
-            packageVerificationCodeExcludedFile = ""
-        )
-    }
-
-    override fun compareTo(other: SpdxPackageVerificationCode) =
-        compareValuesBy(
-            this,
-            other,
-            compareBy(SpdxPackageVerificationCode::packageVerificationCodeValue)
-                .thenBy(SpdxPackageVerificationCode::packageVerificationCodeExcludedFile)
-        ) { it }
-}
-
-internal class SpdxPackageVerificationCodeSerializer :
-    StdSerializer<SpdxPackageVerificationCode>(SpdxPackageVerificationCode::class.java) {
-    override fun serialize(value: SpdxPackageVerificationCode, gen: JsonGenerator, provider: SerializerProvider) {
-        gen.writeStartObject()
-
-        if (value.packageVerificationCodeExcludedFile.isNullOrEmpty()) {
-            gen.writeObjectField(
-                "PackageVerificationCode",
-                value.packageVerificationCodeValue
-            )
-        } else {
-            gen.writeObjectField(
-                "PackageVerificationCode",
-                "${value.packageVerificationCodeValue} (excludes: ${value.packageVerificationCodeExcludedFile})"
-            )
+    val packageVerificationCodeValue: String
+) {
+    init {
+        require(packageVerificationCodeValue.matches("^[0-9a-f]+$".toRegex())) {
+            "The checksum value must only contain lower case hexadecimal digits."
         }
 
-        gen.writeEndObject()
+        require(SpdxChecksum.Algorithm.SHA1.checksumHexDigits == packageVerificationCodeValue.length) {
+            "Expected a checksum value with ${SpdxChecksum.Algorithm.SHA1.checksumHexDigits} hexadecimal digits, but " +
+                    "found ${packageVerificationCodeValue.length}."
+        }
+
     }
 }

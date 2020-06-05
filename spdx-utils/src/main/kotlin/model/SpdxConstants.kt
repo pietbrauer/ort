@@ -19,14 +19,21 @@
 
 package org.ossreviewtoolkit.spdx.model
 
-data class SpdxDocumentDescribes(
+object SpdxConstants {
     /**
-     * List of [SpdxFile] files contained in document.
+     * Represents a not present value, which has been determined to actually be not present. This representation must
+     * not be used if [NOASSERTION] could be used instead.
      */
-    var files: List<SpdxFile> = emptyList(),
+    val NONE = "NONE"
 
     /**
-     * List of [SpdxPackage] packages contained in document.
+     * Represents a not present value where any of the following cases applies:
+     *
+     * 1. no attempt was made to determine the information.
+     * 2. intentionally no information is provided, whereas no meaning should be derived from the absence of the
+     *    information.
      */
-    var packages: List<SpdxPackage> = emptyList()
-)
+    val NOASSERTION = "NOASSERTION"
+
+    internal fun isNotPresent(value: String) = value in setOf(NONE, NOASSERTION)
+}

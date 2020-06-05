@@ -19,40 +19,41 @@
 
 package org.ossreviewtoolkit.spdx.model
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.annotation.JsonUnwrapped
+import com.fasterxml.jackson.annotation.JsonInclude
 
 import java.time.Instant
 
 /**
- * The summary of a single run of the evaluator.
+ * Meta data corresponding to a [SpdxDocument].
  */
 data class SpdxCreationInfo(
     /**
-     * Version of SPDX license list (spdx.org/licenses) used in the document.
-     * Cardinality: Optional, one.
+     * A general comment about the creation of the [SpdxDocument] or any other relevant comment not included in
+     * the other fields.
      */
-    @JsonProperty("LicenseListVersion")
-    val licenseListVersion: String? = null,
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val comment: String = "",
 
     /**
-     * The list of [SpdxCreator]s who created the document.
-     * Cardinality: Mandatory, one or many.
+     * The date and time the [SpdxDocument] was created.
      */
-    @JsonUnwrapped
-    val creators: List<SpdxCreator>,
+    val created: Instant,
 
     /**
-     * Comment on document creation from its creator(s).
-     * Cardinality: Optional, one.
+     * The list of subjects who created the related [SpdxDocument]. At least one must be provided. The format equals the
+     * one for [SpdxAnnotation.annotator].
      */
-    @JsonProperty("CreatorComment")
-    val creatorComment: String? = null,
+    val creators: List<String> = emptyList(),
 
     /**
-     * The date and time [Instant] the document was created.
-     * Cardinality: Mandatory, one.
+     * The version of SPDX license list (https://spdx.org/licenses/) used in the related [SpdxDocument].
+     * Data Format: "M.N"
      */
-    @JsonProperty("Created")
-    val created: Instant = Instant.EPOCH
-)
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val licenseListVersion: String = ""
+
+) {
+    init {
+        require(creators.isNotEmpty()) { "Creators must contain at least one entry, but was empty." }
+    }
+}

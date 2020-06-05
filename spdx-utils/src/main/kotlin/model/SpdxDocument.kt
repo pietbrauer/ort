@@ -19,80 +19,118 @@
 
 package org.ossreviewtoolkit.spdx.model
 
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 
+private const val SPDX_VERSION = "SPDX-2.2"
+private const val DATA_LICENSE = "CC0-1.0"
+
 /**
- * Provides information for forward and backward compatibility to tools processing the SPDX document.
- * Cardinality: Mandatory, one.
+ * An SPDX document as specified by https://github.com/spdx/spdx-spec/tree/master/chapters and
+ * https://github.com/spdx/spdx-spec/blob/development/v2.2.1/examples/.
  */
 data class SpdxDocument(
     /**
-     * Identifier for the document.
-     * Cardinality: mandatory, one.
+     * Identifier og this [SpdxDocument] which may be referenced in relationships by other files, packages internally
+     * and documents externally.
+     *
+     * TODO: Introduce a dedicated type.
      */
     @JsonProperty("SPDXID")
-    val id: String,
+    val spdxId: String,
 
     /**
-     * Name given to the document by its creator.
-     * Cardinality: mandatory, one.
+     * The SPDX version of this document, must equal [SPDX_VERSION].
      */
-     val name: String,
+    val spdxVersion: String = SPDX_VERSION,
 
     /**
-     * Namespace for the document as a unique absolute Uniform Resource Identifier (URI).
-     * Cardinality: mandatory, one.
+     * Information about the creation of this document.
      */
-//    @JsonProperty("DocumentNamespace")
-//    val namespace: String,
-
-    // FIXME Implement ExternalDocumentRef per
-    // https://spdx.org/spdx-specification-21-web-version#h.h430e9ypa0j9
-    /**
-     * External SPDX documents referenced within this document.
-     * Cardinality: Optional, one or many.
-     */
-    /*
-    @JsonProperty("ExternalDocumentRef")
-    val externalDocumentRef: String?,
-    */
+    val creationInfo: SpdxCreationInfo,
 
     /**
-     * External SPDX documents referenced within this document.
-     * Cardinality: Optional, one or many.
+     * The name of this [SpdxDocument] as a single line.
      */
-    @JsonProperty("licenseListVersion")
-    val licenseListVersion: String?,
+    val name: String,
 
     /**
-     * Information on the creation of this document.
+     * The data license of this document, must equal [DATA_LICENSE].
      */
-//    val creationInfo: SpdxCreationInfo,
+    val dataLicense: String = DATA_LICENSE,
 
     /**
-     * Comment from document creators to document consumers.
-     * Cardinality: Optional, one.
+     * A comment towards the consumers of this [SpdxDocument] as multi-line text.
      */
-    @JsonProperty("comment")
-    val creatorComment: String? = null,
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val comment: String = "",
 
     /**
-     * Comment from document creators to document consumers.
-     * Cardinality: Optional, one.
+     * A listing of any external [SpdxDocument] referenced from within this [SpdxDocument].
      */
-    val documentDescribes: SpdxDocumentDescribes
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val externalDocumentRefs: List<SpdxExternalDocumentReference> = emptyList(),
+
+    /**
+     * Information about any licenses which are not on the SPDX license list.
+     */
+    val hasExtractedLicensingInfos: List<SpdxExtractedLicenseInfo> = emptyList(),
+
+    /**
+     * The [SpdxAnnotation]s for the [SpdxDocument]..
+     */
+    val annotations: List<SpdxAnnotation> = emptyList(),
+
+    /**
+     * A unique absolute Uniform Resource Identifier (URI) as specified in RFC-3986, with the following
+     * exceptions:
+     *
+     *  - The SPDX Document URI cannot contain a URI "part" (e.g. the # delimiter), since the # is used to uniquely
+     *    identify SPDX element identifiers. The URI must contain a scheme (e.g. https:).
+     *  - The URI must be unique for the SPDX document including the specific version of the SPDX document. If the SPDX
+     *    document is updated, thereby creating a new version, a new URI for the updated document must be used. There
+     *    can only be one URI for an SPDX document and only one SPDX document for a given URI.
+     */
+    val documentNamespace: String,
+
+    /**
+     * All SPDX identifiers of all packages and files contained in [packages] and [files].
+     */
+    val documentDescribes: List<String> = emptyList(),
+
+    /**
+     * All packages described in this [SpdxDocument].
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val packages: List<SpdxPackage> = emptyList(),
+
+    /**
+     * All files described in this [SpdxDocument].
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val files: List<SpdxFile> = emptyList(),
+
+    /**
+     * All snippets described in this [SpdxDocument].
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val snippets: List<SpdxSnippet> = emptyList(),
+
+    /**
+     * All relationships described in this [SpdxDocument].
+     */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    val relationships: List<SpdxRelationship> = emptyList()
 ) {
-    /**
-     * Reference number to applicable SPDX version, used to determine how to parse and interpret the document.
-     * Cardinality: mandatory, one.
-     */
-    @JsonProperty("SPDXVersion")
-    val version: String = "2.2"
+    init {
+        require(spdxId.isNotBlank()) { "The 'SPDXID' must not be blank. "}
 
-    /**
-     * License of this document which is per the SPDX specification must be CC0-1.0.
-     * Cardinality: mandatory, one.
-     */
-    @JsonProperty("dataLicense")
-    val license: String = "CC0-1.0"
+        require(spdxVersion == SPDX_VERSION) { "The 'SPDXVersion' must be $SPDX_VERSION, but was $spdxVersion." }
+
+        require(name.isNotBlank()) { "The 'name' must not be blank. "}
+
+        require(dataLicense == DATA_LICENSE) { "The 'dataLicense' must be $DATA_LICENSE, but was $dataLicense." }
+
+        require(documentNamespace.isNotBlank()) { "The 'documentNamespace' must not be blank. "}
+    }
 }
