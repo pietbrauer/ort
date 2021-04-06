@@ -151,7 +151,8 @@ fun getLicenseTextReader(
         getLicenseTextResource(id)?.let { { it.readText() } }
             ?: customLicenseTextsDir?.let { getLicenseTextFile(id, it)?.let { file -> { file.readText() } } }
     } else {
-        SpdxLicense.forId(id)?.let { { it.text } }
+        customLicenseTextsDir?.let { getLicenseTextFile(id, it)?.let { file -> { file.readText() } } }
+            ?: SpdxLicense.forId(id)?.let { { it.text } }
             ?: SpdxLicenseException.forId(id)?.takeIf { handleExceptions }?.let { { it.text } }
     }
 
